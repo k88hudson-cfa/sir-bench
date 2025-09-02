@@ -1,0 +1,15 @@
+use sir_bench::base::Parameters;
+use sir_bench::run_from_args;
+
+// Runs a simple SIR model with 100k population
+fn main() {
+    run_from_args(|args| Parameters {
+        r0: 1.5,
+        infectious_period: 3.0,
+        population: 100_000,
+        initial_infections: 5,
+        seed: 42,
+        max_time: args.time,
+        enable_stats: args.stats,
+    });
+}
