@@ -10,16 +10,21 @@ use sir::{baseline, ixa};
 pub enum ModelKind {
     Baseline,
     Ixa,
+    IxaNoQueries,
 }
 
 impl ModelKind {
     pub fn all() -> Vec<Self> {
-        vec![Self::Baseline, Self::Ixa]
+        vec![Self::Baseline, Self::Ixa, Self::IxaNoQueries]
     }
     pub fn into_model(self, params: Parameters) -> Box<dyn SIRModel> {
         match self {
             ModelKind::Baseline => Box::new(baseline::Context::new(params)),
             ModelKind::Ixa => Box::new(ixa::Model::new(params)),
+            ModelKind::IxaNoQueries => Box::new(ixa::Model::new(Parameters {
+                disable_queries: true,
+                ..params
+            })),
         }
     }
 }
@@ -35,12 +40,15 @@ pub struct Args {
 
     #[arg(long)]
     pub stats: bool,
+
+    #[arg(long)]
+    pub disable_queries: bool,
 }
 
-pub fn run_model(model: &mut Box<dyn SIRModel>) {
+pub fn run_model(kind: ModelKind, model: &mut Box<dyn SIRModel>) {
     println!(
-        "Running model '{}' with params {:?}",
-        model.id(),
+        "Running model '{:?}' with params {:?}",
+        kind,
         model.get_params()
     );
     model.run();
@@ -66,6 +74,7 @@ pub fn run_from_args<F: FnOnce(&Args) -> Parameters>(build_params: F) {
 
     for k in model_kinds {
         let mut model = k.into_model(params.clone());
-        run_model(&mut model);
+        run_model(k, &mut model);
+        assert!(model.get_stats().get_cum_incidence() > params.population / 2);
     }
 }

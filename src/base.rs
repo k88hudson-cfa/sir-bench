@@ -10,6 +10,7 @@ pub struct Parameters {
     pub seed: u64,
     pub max_time: f64,
     pub enable_stats: bool,
+    pub disable_queries: bool,
 }
 
 impl Default for Parameters {
@@ -19,9 +20,10 @@ impl Default for Parameters {
             infectious_period: 3.0,
             population: 1000,
             initial_infections: 5,
-            seed: 42,
+            seed: 12345,
             max_time: 100.0,
             enable_stats: false,
+            disable_queries: true,
         }
     }
 }

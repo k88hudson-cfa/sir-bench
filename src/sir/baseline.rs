@@ -27,7 +27,7 @@ pub struct Context {
 
 impl Context {
     pub fn new(parameters: Parameters) -> Context {
-        let stats = ModelStats::new();
+        let stats = ModelStats::new(0);
         Context {
             infection_status_lookup: Vec::new(),
             susceptible_people: IndexSet::new(),
@@ -131,6 +131,7 @@ impl Context {
                 let index = self.rng.random_range(0..n_infectious);
                 let person_to_recover = *self.infectious_people.get_index(index).unwrap();
                 self.set_infection_status(person_to_recover, InfectionStatus::Recovered);
+                self.stats.record_recovery();
                 self.time += recovery_event_time;
             }
 
@@ -178,6 +179,7 @@ mod test {
             seed: 8675308,
             max_time: 200.0,
             enable_stats: true,
+            disable_queries: true,
         });
         context.run();
 

@@ -28,7 +28,8 @@ pub struct Model {
 // TODO split up
 define_rng!(ModelRng);
 
-define_data_plugin!(ModelStatsPlugin, ModelStats, ModelStats::new());
+define_data_plugin!(ModelStatsPlugin, ModelStats, ModelStats::new(0));
+define_data_plugin!(InfectedPeoplePlugin, Vec<PersonId>, Vec::new());
 
 #[derive(Serialize)]
 pub struct Incidence {
@@ -41,7 +42,9 @@ define_report!(Incidence);
 trait InfectionLoop {
     fn get_params(&self) -> &Parameters;
     fn get_stats(&self) -> &ModelStats;
-    fn infectious_people(&self) -> usize;
+    fn infected_people(&self) -> usize;
+    fn random_person(&mut self) -> Option<PersonId>;
+    fn random_infected_person(&mut self) -> Option<PersonId>;
     fn infect_person(&mut self, p: PersonId, t: Option<f64>);
     fn recover_person(&mut self, p: PersonId, t: f64);
     fn next_event(&mut self);
@@ -55,9 +58,34 @@ impl InfectionLoop for Context {
     fn get_stats(&self) -> &ModelStats {
         self.get_data(ModelStatsPlugin)
     }
-    fn infectious_people(&self) -> usize {
-        self.query_people((InfectionStatus, InfectionStatusValue::Infectious))
-            .len()
+    fn infected_people(&self) -> usize {
+        if self.get_params().disable_queries {
+            self.get_data(InfectedPeoplePlugin).len()
+        } else {
+            self.query_people((InfectionStatus, InfectionStatusValue::Infectious))
+                .len()
+        }
+    }
+    fn random_person(&mut self) -> Option<PersonId> {
+        self.sample_person(ModelRng, ())
+    }
+    fn random_infected_person(&mut self) -> Option<PersonId> {
+        if self.get_params().disable_queries {
+            let infected = self.get_data(InfectedPeoplePlugin);
+
+            if infected.is_empty() {
+                None
+            } else {
+                let index = self.sample_range(ModelRng, 0..infected.len());
+                Some(infected[index])
+            }
+        } else {
+            let result = self.sample_person(
+                ModelRng,
+                (InfectionStatus, InfectionStatusValue::Infectious),
+            );
+            result
+        }
     }
     fn infect_person(&mut self, p: PersonId, t: Option<f64>) {
         if self.get_person_property(p, InfectionStatus) != InfectionStatusValue::Susceptible {
@@ -65,6 +93,7 @@ impl InfectionLoop for Context {
         }
         let enable_stats = self.get_params().enable_stats;
         self.set_person_property(p, InfectionStatus, InfectionStatusValue::Infectious);
+        self.get_data_mut(InfectedPeoplePlugin).push(p);
 
         let stats_data = self.get_data_mut(ModelStatsPlugin);
         stats_data.record_infection();
@@ -82,6 +111,10 @@ impl InfectionLoop for Context {
         let enable_stats = self.get_params().enable_stats;
         self.set_person_property(p, InfectionStatus, InfectionStatusValue::Recovered);
 
+        let stats_data = self.get_data_mut(ModelStatsPlugin);
+        stats_data.record_recovery();
+        self.get_data_mut(InfectedPeoplePlugin).retain(|&x| x != p);
+
         if enable_stats {
             self.send_report(Incidence {
                 t,
@@ -92,7 +125,7 @@ impl InfectionLoop for Context {
     fn next_event(&mut self) {
         let params = self.get_params();
         let infection_rate = params.r0 / params.infectious_period;
-        let n = self.infectious_people() as f64;
+        let n = self.infected_people() as f64;
 
         // If there are no more infected people, exit the loop.
         if n == 0.0 {
@@ -107,14 +140,14 @@ impl InfectionLoop for Context {
         let recovery_event_time =
             self.sample_distr(ModelRng, &Exp::new(recovery_event_rate).unwrap());
 
-        let p = self.sample_person(ModelRng, ()).unwrap();
+        let p = self.random_person().unwrap();
         if infection_event_time < recovery_event_time {
             if self.get_person_property(p, InfectionStatus) == InfectionStatusValue::Susceptible {
                 self.add_plan(
                     self.get_current_time() + infection_event_time,
                     move |context| {
                         context.infect_person(p, Some(context.get_current_time()));
-                        if context.infectious_people() > 0 {
+                        if context.infected_people() > 0 {
                             context.next_event();
                         }
                     },
@@ -123,13 +156,10 @@ impl InfectionLoop for Context {
             }
         } else {
             self.add_plan(self.get_current_time() + recovery_event_time, |context| {
-                if let Some(p) = context.sample_person(
-                    ModelRng,
-                    (InfectionStatus, InfectionStatusValue::Infectious),
-                ) {
+                if let Some(p) = context.random_infected_person() {
                     context.recover_person(p, context.get_current_time());
                 }
-                if context.infectious_people() > 0 {
+                if context.infected_people() > 0 {
                     context.next_event();
                 }
             });
@@ -146,11 +176,15 @@ impl InfectionLoop for Context {
             seed,
             max_time,
             enable_stats,
+            disable_queries,
             ..
         } = self.get_params();
 
         self.init_random(seed);
-        self.index_property(InfectionStatus);
+
+        if !disable_queries {
+            self.index_property(InfectionStatus);
+        }
 
         self.report_options().overwrite(true);
 
@@ -164,19 +198,22 @@ impl InfectionLoop for Context {
         }
 
         // Seed infections
+        let stats = self.get_data_mut(ModelStatsPlugin);
+        stats.set_prevalence(initial_infections);
         for p in self.sample_people(
             ModelRng,
             (InfectionStatus, InfectionStatusValue::Susceptible),
             initial_infections,
         ) {
-            self.infect_person(p, None);
+            self.set_person_property(p, InfectionStatus, InfectionStatusValue::Infectious);
+            self.get_data_mut(InfectedPeoplePlugin).push(p);
         }
 
         self.add_plan(max_time, |context| {
             context.shutdown();
         });
 
-        assert_eq!(self.infectious_people(), 5);
+        assert_eq!(self.infected_people(), 5);
     }
 }
 
@@ -223,28 +260,46 @@ mod test {
 
     #[test]
     fn infected_counts() {
-        let mut model = Model::new(Parameters::default());
+        let mut m1 = Model::new(Parameters::default());
+        let mut m2 = Model::new(Parameters {
+            disable_queries: true,
+            ..Parameters::default()
+        });
+        for model in [&mut m1, &mut m2] {
+            model.ctx.setup();
+            assert_eq!(model.ctx.infected_people(), 5);
+            let p = model
+                .ctx
+                .sample_person(
+                    ModelRng,
+                    (InfectionStatus, InfectionStatusValue::Susceptible),
+                )
+                .unwrap();
+            model.ctx.infect_person(p, Some(0.0));
+            assert_eq!(model.ctx.infected_people(), 6);
+            assert_eq!(model.ctx.get_stats().get_cum_incidence(), 1);
+            model.ctx.recover_person(p, 0.0);
+            assert_eq!(model.ctx.infected_people(), 5);
+            assert_eq!(model.ctx.get_stats().get_cum_incidence(), 1);
+        }
+    }
+
+    #[test]
+    fn get_random_infected_person() {
+        let mut model = Model::new(Parameters {
+            disable_queries: true,
+            ..Parameters::default()
+        });
         model.ctx.setup();
-        assert_eq!(model.ctx.infectious_people(), 5);
-        let p = model
-            .ctx
-            .sample_person(
-                ModelRng,
-                (InfectionStatus, InfectionStatusValue::Susceptible),
-            )
-            .unwrap();
-        model.ctx.infect_person(p, Some(0.0));
-        assert_eq!(model.ctx.infectious_people(), 6);
-        assert_eq!(model.ctx.get_stats().get_cum_incidence(), 1);
-        model.ctx.recover_person(p, 0.0);
-        assert_eq!(model.ctx.infectious_people(), 5);
-        assert_eq!(model.ctx.get_stats().get_cum_incidence(), 1);
+        let p = model.ctx.random_infected_person();
+        assert!(p.is_some());
     }
 
     #[test]
     fn run_model() {
-        let params = Parameters::default();
-        let population = params.population;
+        let mut params = Parameters::default();
+        let population = 100_000;
+        params.population = population;
         let mut model = Model::new(params);
         model.run();
 
@@ -252,5 +307,38 @@ mod test {
         let incidence = model.get_stats().get_cum_incidence() as f64;
         let expected = population as f64 * 0.58;
         assert_relative_eq!(incidence, expected, max_relative = 0.02);
+    }
+
+    #[test]
+    fn run_model_disable_queries() {
+        use ixa::prelude::*;
+
+        let params = Parameters::default();
+
+        let mut model1 = Model::new(params.clone());
+        model1.run();
+
+        let mut model2 = Model::new(Parameters {
+            disable_queries: true,
+            ..params.clone()
+        });
+        assert_eq!(
+            model2.ctx.infected_people(),
+            model2
+                .ctx
+                .query_people((InfectionStatus, InfectionStatusValue::Infectious))
+                .len(),
+        );
+        model2.run();
+
+        assert_eq!(
+            model1.get_stats().get_cum_incidence(),
+            model2.get_stats().get_cum_incidence()
+        );
+        assert_eq!(model1.ctx.infected_people(), model2.ctx.infected_people());
+        assert_eq!(
+            model1.get_stats().get_prevalence(),
+            model2.get_stats().get_prevalence()
+        );
     }
 }
