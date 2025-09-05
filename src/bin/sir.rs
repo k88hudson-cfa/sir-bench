@@ -8,7 +8,7 @@ fn main() {
         infectious_period: 3.0,
         population: 1000,
         initial_infections: 5,
-        seed: 12345,
+        seed: 1234,
         max_time: args.time,
         enable_stats: args.stats,
         disable_queries: args.disable_queries,
