@@ -59,7 +59,7 @@ Same parameters as the small test, but with a population of 100k.
 
 ## Results
 
-The following results are from a CI run on  commit `365d7f3`. You can reproduce these results by running the [benchmarks](https://github.com/k88hudson-cfa/sir-bench/actions/workflows/benchmarks.yml) workflow with `large` as the first input, or running `just compare large` locally.
+The following results are from a CI run on  commit `7e704ae`. You can reproduce these results by running the [benchmarks](https://github.com/k88hudson-cfa/sir-bench/actions/workflows/benchmarks.yml) workflow with `large` as the first input, or running `just compare large` locally.
 
 ![Dispatch workflow UI with 'large' input](image.png)
 
@@ -69,22 +69,34 @@ that using indexed queries for contact selection increases
 the runtime by around 40x:
 
 ```
-Benchmark 1: ./target/release/large --model baseline
-  Time (mean ± σ):      25.7 ms ±   0.3 ms    [User: 21.5 ms, System: 4.3 ms]
-  Range (min … max):    25.6 ms …  26.0 ms    3 runs
+ Benchmark 1: ./target/release/large --model baseline
+
+  Time (mean ± σ):      25.9 ms ±   1.7 ms    [User: 21.5 ms, System: 4.4 ms]
+  Warning: The first benchmarking run for this command was significantly slower than the rest (27.9 ms). This could be caused by (filesystem) caches that were not filled until after the first run. You are already using the '--warmup' option which helps to fill these caches before the actual benchmark. You can either try to increase the warmup count further or re-run this benchmark on a quiet system in case it was a random outlier. Alternatively, consider using the '--prepare' option to clear the caches before each timing run.
+  Range (min … max):    24.9 ms …  27.9 ms    3 runs
 
 Benchmark 2: ./target/release/large --model ixa
-  Time (mean ± σ):      7.470 s ±  0.233 s    [User: 7.453 s, System: 0.016 s]
-  Range (min … max):    7.279 s …  7.730 s    3 runs
+
+  Time (mean ± σ):      7.378 s ±  0.022 s    [User: 7.360 s, System: 0.017 s]
+  Warning: The first benchmarking run for this command was significantly slower than the rest (7.403 s). This could be caused by (filesystem) caches that were not filled until after the first run. You are already using the '--warmup' option which helps to fill these caches before the actual benchmark. You can either try to increase the warmup count further or re-run this benchmark on a quiet system in case it was a random outlier. Alternatively, consider using the '--prepare' option to clear the caches before each timing run.
+  Range (min … max):    7.364 s …  7.403 s    3 runs
 
 Benchmark 3: ./target/release/large --model ixa-no-queries
-  Time (mean ± σ):     182.0 ms ±   0.7 ms    [User: 178.5 ms, System: 3.4 ms]
-  Range (min … max):   181.3 ms … 182.7 ms    3 runs
+  Time (mean ± σ):     182.6 ms ±   1.0 ms    [User: 178.6 ms, System: 3.9 ms]
+  Range (min … max):   181.6 ms … 183.6 ms    3 runs
 
 Summary
   ./target/release/large --model baseline  ran
-    7.07 ± 0.08 times faster than ./target/release/large --model ixa-no-queries
-  290.19 ± 9.55 times faster than ./target/release/large --model ixa
+    7.05 ± 0.46 times faster than ./target/release/large --model ixa-no-queries
+  284.79 ± 18.63 times faster than ./target/release/large --model ixa
 ```
 
-These results aren't reproducible at a smaller population size.
+These results are much harder to see for a smaller population (locally, I can't
+reproduce this):
+
+```
+ Summary
+  ./target/release/sir --model baseline  ran
+    4.16 ± 0.09 times faster than ./target/release/sir --model ixa-no-queries
+    6.08 ± 0.11 times faster than ./target/release/sir --model ixa
+```
