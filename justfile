@@ -13,22 +13,25 @@ build:
 
 # Run a specific model: just run large --model ixa -t 10
 run bench_name="sir" *args:
-   cargo run --bin {{ bench_name }} --release -- {{ args }}
+  cargo run --bin {{ bench_name }} --release -- {{ args }}
 
 # Run benchmark comparison
 compare bench_name="sir" *args: build
   hyperfine --warmup 1 --runs 3 \
-   './target/release/{{ bench_name }} --model baseline {{ args }}' \
+  './target/release/{{ bench_name }} --model baseline {{ args }}' \
   './target/release/{{ bench_name }} --model ixa {{ args }}' \
   './target/release/{{ bench_name }} --model ixa-no-queries {{ args }}' \
 
+# Run tests
 test:
   cargo test
 
+# Fix formatting and lint issues
 fix:
   cargo fmt
   cargo clippy --fix --allow-dirty --allow-staged
 
+# Check formatting and lint issues
 check:
   cargo clippy -- -D warnings
   cargo fmt -- --check

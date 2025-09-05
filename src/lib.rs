@@ -42,6 +42,9 @@ pub struct Args {
     pub stats: bool,
 
     #[arg(long)]
+    pub check_attack_rate: bool,
+
+    #[arg(long)]
     pub disable_queries: bool,
 }
 
@@ -75,6 +78,9 @@ pub fn run_from_args<F: FnOnce(&Args) -> Parameters>(build_params: F) {
     for k in model_kinds {
         let mut model = k.into_model(params.clone());
         run_model(k, &mut model);
-        assert!(model.get_stats().get_cum_incidence() > params.population / 2);
+
+        if args.check_attack_rate {
+            assert!(model.get_stats().get_cum_incidence() > params.population / 2);
+        }
     }
 }

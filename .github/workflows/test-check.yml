@@ -33,3 +33,9 @@ jobs:
 
       - name: Run tests
         run: just test
+
+      - name: Check that the models don't die out
+        run:
+          just run sir --check-attack-rate
+          just run large --check-attack-rate
+
