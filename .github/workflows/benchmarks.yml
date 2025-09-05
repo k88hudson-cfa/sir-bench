@@ -44,7 +44,11 @@ jobs:
       - name: Build release binaries
         run: cargo build --release --verbose
 
-      - name: Run large benchmark comparison
+      - name: Run sir benchmark comparison (1000 people)
+        if: github.event_name != 'workflow_dispatch'
+        run: just compare sir
+
+      - name: Run large benchmark comparison (100,000 people)
         if: github.event_name != 'workflow_dispatch'
         run: just compare large
 
