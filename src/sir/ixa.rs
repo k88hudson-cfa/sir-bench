@@ -80,7 +80,6 @@ impl InfectionLoop for Context {
                 Some(infected[index])
             }
         } else {
-            
             self.sample_person(
                 ModelRng,
                 (InfectionStatus, InfectionStatusValue::Infectious),
@@ -99,12 +98,13 @@ impl InfectionLoop for Context {
         stats_data.record_infection();
 
         if let Some(t) = t
-            && enable_stats {
-                self.send_report(Incidence {
-                    t,
-                    status: InfectionStatusValue::Infectious,
-                });
-            }
+            && enable_stats
+        {
+            self.send_report(Incidence {
+                t,
+                status: InfectionStatusValue::Infectious,
+            });
+        }
     }
     fn recover_person(&mut self, p: PersonId, t: f64) {
         let enable_stats = self.get_params().enable_stats;
