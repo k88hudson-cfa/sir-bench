@@ -64,7 +64,7 @@ The following results are from a CI run on  commit `365d7f3`. You can reproduce 
 ![Dispatch workflow UI with 'large' input](image.png)
 
 Overall, it appears that the baseline implementation of a basic SIR model for a population of 100k with
-a final attack rate of ~58%) is around 7x faster than the ixa implementation, and
+a final attack rate of ~58% is around 7x faster than the ixa implementation, and
 that using indexed queries for contact selection increases
 the runtime by around 40x:
 
