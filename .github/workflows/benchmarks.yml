@@ -1,0 +1,50 @@
+name: Hyperfine Benchmarks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      benchmark:
+        description: "Benchmark to run"
+        required: false
+        default: "large"
+      args:
+        description: "Additional arguments"
+        required: false
+        default: ""
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/cache
+            ~/.cargo/registry
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install hyperfine
+        run: cargo install hyperfine
+
+      - name: Build release binaries
+        run: cargo build --release --verbose
+
+      - name: Run large benchmark comparison
+        if: github.event_name != 'workflow_dispatch'
+        run: just compare large
+
+      - name: Run benchmark comparison
+        if: github.event_name == 'workflow_dispatch'
+        run: just compare ${{ github.event.inputs.benchmark }} ${{ github.event.inputs.args }}

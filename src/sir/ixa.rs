@@ -80,11 +80,11 @@ impl InfectionLoop for Context {
                 Some(infected[index])
             }
         } else {
-            let result = self.sample_person(
+            
+            self.sample_person(
                 ModelRng,
                 (InfectionStatus, InfectionStatusValue::Infectious),
-            );
-            result
+            )
         }
     }
     fn infect_person(&mut self, p: PersonId, t: Option<f64>) {
@@ -98,14 +98,13 @@ impl InfectionLoop for Context {
         let stats_data = self.get_data_mut(ModelStatsPlugin);
         stats_data.record_infection();
 
-        if let Some(t) = t {
-            if enable_stats {
+        if let Some(t) = t
+            && enable_stats {
                 self.send_report(Incidence {
                     t,
                     status: InfectionStatusValue::Infectious,
                 });
             }
-        }
     }
     fn recover_person(&mut self, p: PersonId, t: f64) {
         let enable_stats = self.get_params().enable_stats;
@@ -136,9 +135,9 @@ impl InfectionLoop for Context {
         let recovery_event_rate = n / params.infectious_period;
 
         let infection_event_time =
-            self.sample_distr(ModelRng, &Exp::new(infection_event_rate).unwrap());
+            self.sample_distr(ModelRng, Exp::new(infection_event_rate).unwrap());
         let recovery_event_time =
-            self.sample_distr(ModelRng, &Exp::new(recovery_event_rate).unwrap());
+            self.sample_distr(ModelRng, Exp::new(recovery_event_rate).unwrap());
 
         let p = self.random_person().unwrap();
         if infection_event_time < recovery_event_time {

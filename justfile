@@ -22,3 +22,13 @@ compare bench_name="sir" *args: build
   './target/release/{{ bench_name }} --model ixa {{ args }}' \
   './target/release/{{ bench_name }} --model ixa-no-queries {{ args }}' \
 
+test:
+  cargo test
+
+fix:
+  cargo fmt
+  cargo clippy --fix --allow-dirty --allow-staged
+
+check:
+  cargo clippy -- -D warnings
+  cargo fmt -- --check

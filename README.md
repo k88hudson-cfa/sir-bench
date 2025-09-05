@@ -50,26 +50,3 @@ enable_stats: args.stats,
 
 Same parameters as the small test, but with a population of 100k.
 
-```
-just compare large
-cargo build --release
-    Finished `release` profile [optimized] target(s) in 0.14s
-hyperfine --warmup 1 --runs 3 './target/release/large --model baseline ' './target/release/large --model ixa '
-Benchmark 1: ./target/release/large --model baseline
-  Time (mean ± σ):      21.2 ms ±   2.1 ms    [User: 18.8 ms, System: 1.9 ms]
-  Range (min … max):    18.8 ms …  22.5 ms    3 runs
-
-Benchmark 2: ./target/release/large --model ixa
-  Time (mean ± σ):      6.013 s ±  0.180 s    [User: 5.786 s, System: 0.041 s]
-  Range (min … max):    5.806 s …  6.125 s    3 runs
-
-  Warning: Statistical outliers were detected. Consider re-running this benchmark on a quiet system without any interferences from other programs. It might help to use the '--warmup' or '--prepare' options.
-
-Summary
-  ./target/release/large --model baseline  ran
-  284.18 ± 29.08 times faster than ./target/release/large --model ixa
-```
-
-
-
-
