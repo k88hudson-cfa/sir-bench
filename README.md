@@ -59,16 +59,14 @@ Same parameters as the small test, but with a population of 100k.
 
 ## Results
 
-The following results are from a CI run on  commit `365d7f3`. You can reproduce these results by running the [benchmarks](https://github.com/k88hudson-cfa/sir-bench/actions/workflows/benchmarks.yml) workflow with `large` as the first input:
+The following results are from a CI run on  commit `365d7f3`. You can reproduce these results by running the [benchmarks](https://github.com/k88hudson-cfa/sir-bench/actions/workflows/benchmarks.yml) workflow with `large` as the first input, or running `just compare large` locally.
 
 ![Dispatch workflow UI with 'large' input](image.png)
-
-Or running `just compare large` locally.
 
 Overall, it appears that the baseline implementation of a basic SIR model for a population of 100k with
 a final attack rate of ~58%) is around 7x faster than the ixa implementation, and
 that using indexed queries for contact selection increases
-the runtime by around `40x`:
+the runtime by around 40x:
 
 ```
 Benchmark 1: ./target/release/large --model baseline
@@ -89,4 +87,4 @@ Summary
   290.19 ± 9.55 times faster than ./target/release/large --model ixa
 ```
 
-These results are not obivous
+These results aren't reproducible at a smaller population size.
