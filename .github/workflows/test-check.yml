@@ -1,4 +1,4 @@
-name: Test
+name: Test and check formatting, lints
 
 on:
   push:
@@ -25,5 +25,8 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Run all checks
+      - name: Run lint, formatting checks
         run: just check
+
+      - name: Run tests
+        run: just test

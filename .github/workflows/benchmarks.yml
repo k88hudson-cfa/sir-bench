@@ -1,4 +1,4 @@
-name: Hyperfine Benchmarks
+name: Run benchmarks
 
 on:
   push:
